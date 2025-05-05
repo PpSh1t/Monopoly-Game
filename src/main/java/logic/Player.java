@@ -20,6 +20,15 @@ public class Player {
         this.ownedLandPositions = new ArrayList<>();
     }
 
+    /**
+     * 根据骰子结果，让玩家沿地图顺时针前进，支持回到起点循环
+     * @param steps 骰子掷出的点数
+     * @param mapSize 地图格子总数
+     */
+    public void move(int steps, int mapSize) {
+        position = (position + steps) % mapSize;
+    }
+
     // ==== Getter / Setter ====
     public String getName() {
         return name;
