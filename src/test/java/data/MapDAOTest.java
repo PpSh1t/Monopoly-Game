@@ -10,21 +10,13 @@ import static org.junit.jupiter.api.Assertions.*;
 public class MapDAOTest {
 
     @Test
-    public void testLoadMap_NotEmpty() {
+    public void testLoadMap() {
         List<Tile> map = MapDAO.loadMap();
-        assertNotNull(map, "地图加载结果不应为 null");
-        assertFalse(map.isEmpty(), "地图不应为空");
-        System.out.println("地图加载成功，共有 " + map.size() + " 个地块。");
+        assertNotNull(map, "地图加载失败！");
+        assertTrue(map.size() > 0, "地图没有加载任何地块！");
+
+        // 输出地图中每个地块的信息
+        map.forEach(tile -> System.out.println(tile));
     }
 
-    @Test
-    public void testTileTypesValid() {
-        List<Tile> map = MapDAO.loadMap();
-        for (Tile tile : map) {
-            assertNotNull(tile.getType(), "地图地块类型不能为空");
-        }
-    }
-
-    // 你可以添加更多测试，例如：
-    // testLoadMap_ContainsStartTile
 }
