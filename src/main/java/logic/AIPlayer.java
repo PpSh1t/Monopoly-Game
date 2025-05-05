@@ -2,8 +2,8 @@ package logic;
 
 public class AIPlayer extends Player {
 
-    public AIPlayer(String name, String avatarPath, int initialMoney) {
-        super(name, true, avatarPath, initialMoney);
+    public AIPlayer(String name, int initialMoney) {
+        super(name, true, initialMoney);
     }
 
     // 示例：AI是否买地（简单策略）
@@ -12,9 +12,9 @@ public class AIPlayer extends Player {
     }
 
     // 示例：AI是否升级房产
-    public boolean decideToUpgrade(Tile tile) {
-        return getOwnedLandPositions().contains(tile) && getMoney() > 300;
-    }
+    //public boolean decideToUpgrade(Tile tile) {
+    //   return getOwnedLandPositions().contains(tile) && getMoney() > 300;
 
-    // 更多 AI 策略以后扩展
+
+// 更多 AI 策略以后扩展
 }
