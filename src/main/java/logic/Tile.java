@@ -47,6 +47,22 @@ public class Tile {
         }
     }
 
+    /**
+     * 获取购买价格
+     * @return  当前地块房价
+     */
+    public int getPrice() {
+        return 200 + level * 100;
+    }
+
+    /**
+     * 获取租金价格
+     * @return  当前地块租金
+     */
+    public int getRent() {
+        return 50 + level * 50;
+    }
+
 
     // Getter 和 Setter 方法
     public TileType getType() {

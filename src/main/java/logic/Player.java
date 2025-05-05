@@ -54,6 +54,10 @@ public class Player {
         return money;
     }
 
+    public void setMoney(int money) {
+        this.money = money;
+    }
+
     public void changeMoney(int amount) {
         this.money += amount;
     }
