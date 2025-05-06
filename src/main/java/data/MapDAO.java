@@ -23,7 +23,6 @@ public class MapDAO {
                 // owner 暂不处理，后面配合玩家表做
                 map.add(tile);
             }
-
         } catch (SQLException e) {
             System.err.println("Failed to load map: " + e.getMessage());
         }

@@ -5,51 +5,36 @@ import java.util.List;
 
 public class Game {
     private List<Tile> map;
+    private List<Player> players;
 
-    public Game(List<Tile> map) {
+    public Game(List<Tile> map, List<Player> players) {
         this.map = map;
+        this.players = players;
     }
 
-    /**
-     * 玩家回合循环
-     * @param players 玩家
-     */
-    public void runGameLoop(List<Player> players) {
+    public void runGameLoop() {
         boolean gameOngoing = true;
 
         while (gameOngoing) {
             for (Player player : players) {
-                // 跳过破产玩家
                 if (player.isBankrupt()) continue;
 
                 System.out.println("\n--- " + player.getName() + " 的回合 ---");
 
-                // 判断是否跳过回合
                 if (player.isSkipTurn()) {
                     System.out.println(player.getName() + " 跳过了本回合！");
-                    player.setSkipTurn(false); // 重置跳过状态
+                    player.setSkipTurn(false);
                     continue;
                 }
 
-                // 掷骰子
-                int steps = Dice.roll();
-                System.out.println(player.getName() + " 掷出了 " + steps);
+                takeTurn(player);
 
-                // 移动玩家
-                int newPosition = (player.getPosition() + steps) % map.size();
-                player.setPosition(newPosition);
-                System.out.println(player.getName() + " 移动到了位置 " + newPosition);
-
-                // 处理地块逻辑
-                handleTile(player);
-
-                // 判断是否破产
                 if (player.getMoney() < 0) {
                     player.setBankrupt(true);
                     System.out.println(player.getName() + " 破产出局！");
+                    clearPlayerAssets(player);
                 }
 
-                // 检查是否只剩一个玩家
                 long remaining = players.stream().filter(p -> !p.isBankrupt()).count();
                 if (remaining == 1) {
                     gameOngoing = false;
@@ -58,7 +43,7 @@ public class Game {
             }
         }
 
-        // 游戏结束，输出胜者
+        // 游戏结束
         for (Player p : players) {
             if (!p.isBankrupt()) {
                 System.out.println("\n🏆 游戏结束，胜者是 " + p.getName() + "！");
@@ -66,11 +51,23 @@ public class Game {
         }
     }
 
+    private void takeTurn(Player player) {
+        int steps = Dice.roll();
+        System.out.println(player.getName() + " 掷出了 " + steps);
 
-    /**
-     * 统一调度
-     * 处理玩家落点：根据地块类型分别调用不同逻辑
-     */
+        int newPosition = (player.getPosition() + steps) % map.size();
+        player.setPosition(newPosition);
+        System.out.println(player.getName() + " 移动到了位置 " + newPosition);
+
+        handleTile(player);
+
+        if (player.isExtraTurn() && !player.isBankrupt()) {
+            player.setExtraTurn(false);
+            System.out.println(player.getName() + " 触发了额外回合！");
+            takeTurn(player);  // 递归处理额外回合
+        }
+    }
+
     public void handleTile(Player player) {
         Tile tile = map.get(player.getPosition());
         System.out.println(player.getName() + " 停在了 " + tile.getType() + " 地块上。");
@@ -78,11 +75,11 @@ public class Game {
         switch (tile.getType()) {
             case LAND:
                 if (tile.getOwner() == null) {
-                    handleEmptyLand(player, tile);          // 空地购买逻辑
+                    handleEmptyLand(player, tile);
                 } else if (isOwnedByPlayer(tile, player)) {
-                    handlePlayerOnOwnLand(player, tile);    // 自己地：升级逻辑
+                    handlePlayerOnOwnLand(player, tile);
                 } else {
-                    handlePayRent(player, tile);            // 他人地：付租金逻辑
+                    handlePayRent(player, tile);
                 }
                 break;
 
@@ -116,24 +113,10 @@ public class Game {
         }
     }
 
-
-    /**
-     * 判断该地块是否属于当前玩家
-     *
-     * @param tile   当前地块
-     * @param player 当前玩家
-     * @return true 表示是自己的地块
-     */
     private boolean isOwnedByPlayer(Tile tile, Player player) {
         return player.getName().equals(tile.getOwner());
     }
 
-    /**
-     * 处理玩家到达自己地块时的升级操作
-     *
-     * @param player 当前玩家
-     * @param tile   当前地块（必须是自己的）
-     */
     private void handlePlayerOnOwnLand(Player player, Tile tile) {
         if (!tile.canUpgrade()) {
             System.out.println(player.getName() + " 的土地已满级，不能再升级。");
@@ -158,20 +141,10 @@ public class Game {
         }
     }
 
-    /**
-     * AI 玩家是否决定升级自己地块的策略
-     *
-     * @return true 表示愿意升级，false 表示跳过升级
-     */
     private boolean decideAIWantsToUpgrade() {
-        // 简单策略：70% 的概率愿意升级
         return Math.random() < 0.7;
     }
 
-
-    /**
-     * 玩家走到空地时的购买逻辑
-     */
     private void handleEmptyLand(Player player, Tile tile) {
         if (player.isAI()) {
             if (player.getMoney() >= tile.getPrice() && Math.random() < 0.6) {
@@ -195,46 +168,48 @@ public class Game {
         }
     }
 
-    /**
-     * 玩家走到别人地时付租金
-     */
     private void handlePayRent(Player player, Tile tile) {
         int rent = tile.getRent();
         player.setMoney(player.getMoney() - rent);
         System.out.println(player.getName() + " 支付给 " + tile.getOwner() + " 租金 $" + rent + "，剩余 $" + player.getMoney());
-        // TODO: 将租金加到 tile.getOwner() 的玩家身上（需玩家列表支持）
-    }
 
-    /**
-     * 玩家走到幸运地块的处理逻辑
-     */
-    private void handleLuckyEvent(Player player) {
-        int reward = 100 + (int) (Math.random() * 200); // $100~$299 随机奖励
-        player.setMoney(player.getMoney() + reward);
-        System.out.println(player.getName() + " 触发幸运事件，获得奖金 $" + reward + "，现有 $" + player.getMoney());
-
-        // BONUS（可选）：再掷一次骰子
-        if (!player.isAI()) {
-            JOptionPane.showMessageDialog(null, player.getName() + " 获得一次额外掷骰机会！");
-            player.setExtraTurn(true); // 你需要在游戏回合中支持额外回合逻辑
+        for (Player p : players) {
+            if (p.getName().equals(tile.getOwner()) && !p.isBankrupt()) {
+                p.setMoney(p.getMoney() + rent);
+                System.out.println(tile.getOwner() + " 获得租金 $" + rent + "，现有 $" + p.getMoney());
+                break;
+            }
         }
     }
 
-    /**
-     * 玩家走到不幸地块的处理逻辑
-     */
+    private void handleLuckyEvent(Player player) {
+        int reward = 100 + (int) (Math.random() * 200);
+        player.setMoney(player.getMoney() + reward);
+        System.out.println(player.getName() + " 触发幸运事件，获得奖金 $" + reward + "，现有 $" + player.getMoney());
+
+        if (!player.isAI()) {
+            JOptionPane.showMessageDialog(null, player.getName() + " 获得一次额外掷骰机会！");
+            player.setExtraTurn(true);
+        }
+    }
+
     private void handleUnluckyEvent(Player player) {
-        int penalty = 50 + (int) (Math.random() * 150); // $50~$199 随机惩罚
+        int penalty = 50 + (int) (Math.random() * 150);
         player.setMoney(player.getMoney() - penalty);
         System.out.println(player.getName() + " 遭遇不幸事件，损失 $" + penalty + "，现有 $" + player.getMoney());
 
-        // BONUS（可选）：跳过下一回合
-        double skipChance = 0.3;
-        if (Math.random() < skipChance) {
+        if (Math.random() < 0.3) {
             System.out.println(player.getName() + " 太倒霉了，下回合也要跳过！");
             player.setSkipTurn(true);
         }
     }
 
-
+    private void clearPlayerAssets(Player player) {
+        for (Tile tile : map) {
+            if (player.getName().equals(tile.getOwner())) {
+                tile.setOwner(null);
+                tile.setLevel(1);
+            }
+        }
+    }
 }
