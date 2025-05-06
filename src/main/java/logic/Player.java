@@ -21,10 +21,10 @@ public class Player {
         return extraTurn;
     }
 
-    public Player(String name, boolean isAI, int initialMoney) {
+    public Player(String name, boolean isAI) {
         this.name = name;
         this.isAI = isAI;
-        this.money = initialMoney;
+        this.money = 1000;
         this.position = 0;
     }
 }

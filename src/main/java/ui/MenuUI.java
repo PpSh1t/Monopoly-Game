@@ -36,6 +36,7 @@ public class MenuUI extends JFrame {
         newGameButton.addActionListener(e -> {
             System.out.println("点击了新游戏");
             // TODO: 进入新游戏设置界面
+            SwingUtilities.invokeLater(PlayerSelectUI::new);
         });
 
         continueGameButton.addActionListener(e -> {
