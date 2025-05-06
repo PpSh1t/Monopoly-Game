@@ -1,16 +1,51 @@
 package logic;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import javax.swing.*;
 import java.util.List;
 
+@Getter
+@Setter
 public class Game {
+    @Getter
     private List<Tile> map;
+    @Getter
     private List<Player> players;
 
     public Game(List<Tile> map, List<Player> players) {
         this.map = map;
         this.players = players;
     }
+
+
+    // Game.java
+    private int currentPlayerIndex = 0;
+
+    public void nextTurn() {
+        Player player = players.get(currentPlayerIndex);
+
+        if (!player.isBankrupt()) {
+            takeTurn(player);
+        }
+
+        // 判断游戏是否结束
+        long alive = players.stream().filter(p -> !p.isBankrupt()).count();
+        if (alive <= 1) {
+            Player winner = players.stream().filter(p -> !p.isBankrupt()).findFirst().orElse(null);
+            if (winner != null) {
+                JOptionPane.showMessageDialog(null, "游戏结束，胜者是 " + winner.getName());
+            }
+            return;
+        }
+
+        // 切换到下一个玩家
+        do {
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+        } while (players.get(currentPlayerIndex).isBankrupt());
+    }
+
 
     public void runGameLoop() {
         boolean gameOngoing = true;
@@ -216,4 +251,14 @@ public class Game {
             }
         }
     }
+
+    // Game.java
+    public boolean isGameOver() {
+        return players.stream().filter(p -> !p.isBankrupt()).count() <= 1;
+    }
+
+    public Player getWinner() {
+        return players.stream().filter(p -> !p.isBankrupt()).findFirst().orElse(null);
+    }
+
 }
