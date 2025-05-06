@@ -39,7 +39,7 @@ public class Game {
                 if (player.getMoney() < 0) {
                     player.setBankrupt(true);
                     System.out.println(player.getName() + " 破产出局！");
-                    clearPlayerAssets(player);
+                    clearPlayerAssets(player);  // 清理该玩家的所有资产
                 }
 
                 long remaining = players.stream().filter(p -> !p.isBankrupt()).count();
@@ -57,6 +57,7 @@ public class Game {
             }
         }
     }
+
 
 
     private void takeTurn(Player player) {
