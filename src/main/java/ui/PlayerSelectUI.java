@@ -101,6 +101,8 @@ public class PlayerSelectUI extends JFrame {
 
         JOptionPane.showMessageDialog(this, "玩家选择完成，准备进入游戏！");
         // TODO: 跳转游戏主界面
+        this.dispose(); // 关闭当前界面
+        SwingUtilities.invokeLater(() -> new GameMapUI(selectedPlayers)); // 打开地图界面
     }
 
     private ImageIcon loadIcon(String path) {
