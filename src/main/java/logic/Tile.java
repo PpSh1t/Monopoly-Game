@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Tile {
-    public enum TileType { START, LAND, LUCKY, UNLUCKY, PRISON, HOSPITAL, TAX }
+    public enum TileType { START, LAND, LUCKY, UNLUCKY, PRISON}
 
     private TileType type;       // 地块类型
     /**

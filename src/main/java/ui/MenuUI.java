@@ -35,7 +35,7 @@ public class MenuUI extends JFrame {
         // 添加事件监听（你可以在这里连接你的控制器逻辑）
         newGameButton.addActionListener(e -> {
             System.out.println("点击了新游戏");
-            // TODO: 进入新游戏设置界面
+            // TODO: 进入选人界面
             SwingUtilities.invokeLater(PlayerSelectUI::new);
         });
 

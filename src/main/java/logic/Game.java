@@ -135,18 +135,6 @@ public class Game {
                 player.setSkipTurn(true);
                 break;
 
-            case HOSPITAL:
-                System.out.println(player.getName() + " 进医院，交费 $100 并跳过一回合！");
-                player.setMoney(player.getMoney() - 100);
-                player.setSkipTurn(true);
-                break;
-
-            case TAX:
-                int tax = player.getMoney() / 10;
-                player.setMoney(player.getMoney() - tax);
-                System.out.println(player.getName() + " 缴纳税金 $" + tax + "，剩余 $" + player.getMoney());
-                break;
-
             default:
                 System.out.println("未知地块类型，暂未实现。");
         }
