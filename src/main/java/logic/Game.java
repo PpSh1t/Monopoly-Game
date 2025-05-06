@@ -30,22 +30,22 @@ public class Game {
                 break;
 
             case LUCKY:
-                //handleLuckyEvent(player);
+                handleLuckyEvent(player);
                 break;
 
             case UNLUCKY:
-                //handleUnluckyEvent(player);
+                handleUnluckyEvent(player);
                 break;
 
             case PRISON:
                 System.out.println(player.getName() + " 进了监狱，下一回合跳过！");
-                //player.setSkipTurn(true);
+                player.setSkipTurn(true);
                 break;
 
             case HOSPITAL:
                 System.out.println(player.getName() + " 进医院，交费 $100 并跳过一回合！");
                 player.setMoney(player.getMoney() - 100);
-                //player.setSkipTurn(true);
+                player.setSkipTurn(true);
                 break;
 
             case TAX:
@@ -147,6 +147,39 @@ public class Game {
         System.out.println(player.getName() + " 支付给 " + tile.getOwner() + " 租金 $" + rent + "，剩余 $" + player.getMoney());
         // TODO: 将租金加到 tile.getOwner() 的玩家身上（需玩家列表支持）
     }
+
+    /**
+     * 玩家走到幸运地块的处理逻辑
+     */
+    private void handleLuckyEvent(Player player) {
+        int reward = 100 + (int) (Math.random() * 200); // $100~$299 随机奖励
+        player.setMoney(player.getMoney() + reward);
+        System.out.println(player.getName() + " 触发幸运事件，获得奖金 $" + reward + "，现有 $" + player.getMoney());
+
+        // BONUS（可选）：再掷一次骰子
+        if (!player.isAI()) {
+            JOptionPane.showMessageDialog(null, player.getName() + " 获得一次额外掷骰机会！");
+            player.setExtraTurn(true); // 你需要在游戏回合中支持额外回合逻辑
+        }
+    }
+
+    /**
+     * 玩家走到不幸地块的处理逻辑
+     */
+    private void handleUnluckyEvent(Player player) {
+        int penalty = 50 + (int) (Math.random() * 150); // $50~$199 随机惩罚
+        player.setMoney(player.getMoney() - penalty);
+        System.out.println(player.getName() + " 遭遇不幸事件，损失 $" + penalty + "，现有 $" + player.getMoney());
+
+        // BONUS（可选）：跳过下一回合
+        double skipChance = 0.3;
+        if (Math.random() < skipChance) {
+            System.out.println(player.getName() + " 太倒霉了，下回合也要跳过！");
+            player.setSkipTurn(true);
+        }
+    }
+
+
 
 
 
