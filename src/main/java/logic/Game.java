@@ -27,7 +27,14 @@ public class Game {
                     continue;
                 }
 
-                takeTurn(player);
+                // 使用循环处理玩家回合，包括额外回合
+                boolean hasExtraTurn = player.hasExtraTurn();
+                while (hasExtraTurn) {
+                    takeTurn(player);  // 进行回合
+                    hasExtraTurn = player.hasExtraTurn();  // 检查是否还有额外回合
+                }
+
+                takeTurn(player);  // 进行正常回合
 
                 if (player.getMoney() < 0) {
                     player.setBankrupt(true);
@@ -51,6 +58,7 @@ public class Game {
         }
     }
 
+
     private void takeTurn(Player player) {
         int steps = Dice.roll();
         System.out.println(player.getName() + " 掷出了 " + steps);
@@ -60,13 +68,8 @@ public class Game {
         System.out.println(player.getName() + " 移动到了位置 " + newPosition);
 
         handleTile(player);
-
-        if (player.isExtraTurn() && !player.isBankrupt()) {
-            player.setExtraTurn(false);
-            System.out.println(player.getName() + " 触发了额外回合！");
-            takeTurn(player);  // 递归处理额外回合
-        }
     }
+
 
     public void handleTile(Player player) {
         Tile tile = map.get(player.getPosition());
