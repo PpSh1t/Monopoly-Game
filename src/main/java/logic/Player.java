@@ -12,6 +12,7 @@ public class Player {
     private boolean isAI;
     private int money;
     private int position;
+    private boolean bankrupt = false;
     private boolean extraTurn = false; // 是否获得额外回合
     private boolean skipTurn = false; //是否跳过回合
 
@@ -19,8 +20,6 @@ public class Player {
     public boolean hasExtraTurn() {
         return extraTurn;
     }
-
-
 
     public Player(String name, boolean isAI, int initialMoney) {
         this.name = name;

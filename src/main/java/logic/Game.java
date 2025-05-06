@@ -11,6 +11,63 @@ public class Game {
     }
 
     /**
+     * 玩家回合循环
+     * @param players 玩家
+     */
+    public void runGameLoop(List<Player> players) {
+        boolean gameOngoing = true;
+
+        while (gameOngoing) {
+            for (Player player : players) {
+                // 跳过破产玩家
+                if (player.isBankrupt()) continue;
+
+                System.out.println("\n--- " + player.getName() + " 的回合 ---");
+
+                // 判断是否跳过回合
+                if (player.isSkipTurn()) {
+                    System.out.println(player.getName() + " 跳过了本回合！");
+                    player.setSkipTurn(false); // 重置跳过状态
+                    continue;
+                }
+
+                // 掷骰子
+                int steps = Dice.roll();
+                System.out.println(player.getName() + " 掷出了 " + steps);
+
+                // 移动玩家
+                int newPosition = (player.getPosition() + steps) % map.size();
+                player.setPosition(newPosition);
+                System.out.println(player.getName() + " 移动到了位置 " + newPosition);
+
+                // 处理地块逻辑
+                handleTile(player);
+
+                // 判断是否破产
+                if (player.getMoney() < 0) {
+                    player.setBankrupt(true);
+                    System.out.println(player.getName() + " 破产出局！");
+                }
+
+                // 检查是否只剩一个玩家
+                long remaining = players.stream().filter(p -> !p.isBankrupt()).count();
+                if (remaining == 1) {
+                    gameOngoing = false;
+                    break;
+                }
+            }
+        }
+
+        // 游戏结束，输出胜者
+        for (Player p : players) {
+            if (!p.isBankrupt()) {
+                System.out.println("\n🏆 游戏结束，胜者是 " + p.getName() + "！");
+            }
+        }
+    }
+
+
+    /**
      * 统一调度
      * 处理玩家落点：根据地块类型分别调用不同逻辑
      */
@@ -178,10 +235,6 @@ public class Game {
             player.setSkipTurn(true);
         }
     }
-
-
-
-
 
 
 }
