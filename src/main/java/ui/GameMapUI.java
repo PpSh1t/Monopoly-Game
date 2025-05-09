@@ -22,11 +22,13 @@ public class GameMapUI extends JFrame {
     private Game game;
     private JLayeredPane layeredPane;
     private JLabel[] playerMarkers;
+    private JLabel[] moneyLabels;
 
     public GameMapUI(List<Player> selectedPlayers) {
         this.players = selectedPlayers;
         this.game = new Game(MapDAO.loadMap(), players);
         this.playerMarkers = new JLabel[players.size()];
+        this.moneyLabels = new JLabel[players.size()];
 
         setTitle("游戏地图");
         backgroundImage = loadImage("/icons/game.png");
@@ -99,8 +101,8 @@ public class GameMapUI extends JFrame {
         // 处理地块事件
         handleTileEvent(player);
 
-        // 切换到下一个玩家
-        nextPlayerTurn();
+        // 更新金钱显示
+        updateMoneyDisplay();
     }
 
     private void updatePlayerMarker(Player player) {
@@ -124,41 +126,179 @@ public class GameMapUI extends JFrame {
     private void handleTileEvent(Player player) {
         Tile tile = game.getMap().get(player.getPosition());
         String message = player.getName() + " 停在了 " + tile.getType() + " 地块上。\n";
+        boolean showDialog = true;
 
         switch (tile.getType()) {
             case LAND:
                 if (tile.getOwner() == null) {
-                    message += "这是一块空地。";
+                    // 空地，询问是否购买
+                    if (player.isAI()) {
+                        // AI自动决定是否购买
+                        if (player.getMoney() >= tile.getPrice() && Math.random() < 0.6) {
+                            tile.setOwner(player.getName());
+                            player.setMoney(player.getMoney() - tile.getPrice());
+                            message += "AI决定购买该地块，花费 $" + tile.getPrice() + "，剩余 $" + player.getMoney();
+                        } else {
+                            message += "AI决定不购买该地块。";
+                        }
+                    } else {
+                        // 玩家选择是否购买
+                        int choice = JOptionPane.showConfirmDialog(this,
+                                "这是一块空地，是否以 $" + tile.getPrice() + " 购买？",
+                                "购买土地", JOptionPane.YES_NO_OPTION);
+
+                        if (choice == JOptionPane.YES_OPTION) {
+                            if (player.getMoney() >= tile.getPrice()) {
+                                tile.setOwner(player.getName());
+                                player.setMoney(player.getMoney() - tile.getPrice());
+                                message += "你购买了该地块，花费 $" + tile.getPrice() + "，剩余 $" + player.getMoney();
+                            } else {
+                                message += "你的资金不足，无法购买该地块！";
+                            }
+                        } else {
+                            message += "你选择不购买该地块。";
+                        }
+                    }
                 } else if (tile.getOwner().equals(player.getName())) {
-                    message += "这是你自己的土地。";
+                    // 自己的土地，询问是否升级
+                    if (tile.canUpgrade()) {
+                        int upgradeCost = tile.getUpgradeCost();
+                        if (player.isAI()) {
+                            // AI自动决定是否升级
+                            if (player.getMoney() >= upgradeCost && Math.random() < 0.7) {
+                                tile.upgrade();
+                                player.setMoney(player.getMoney() - upgradeCost);
+                                message += "AI决定升级该地块到等级 " + tile.getLevel() +
+                                        "，花费 $" + upgradeCost + "，剩余 $" + player.getMoney();
+                            } else {
+                                message += "AI决定不升级该地块。";
+                            }
+                        } else {
+                            // 玩家选择是否升级
+                            int choice = JOptionPane.showConfirmDialog(this,
+                                    "这是你的土地，是否花费 $" + upgradeCost + " 升级到等级 " + (tile.getLevel()+1) + "？",
+                                    "升级土地", JOptionPane.YES_NO_OPTION);
+
+                            if (choice == JOptionPane.YES_OPTION) {
+                                if (player.getMoney() >= upgradeCost) {
+                                    tile.upgrade();
+                                    player.setMoney(player.getMoney() - upgradeCost);
+                                    message += "你升级了该地块到等级 " + tile.getLevel() +
+                                            "，花费 $" + upgradeCost + "，剩余 $" + player.getMoney();
+                                } else {
+                                    message += "你的资金不足，无法升级该地块！";
+                                }
+                            } else {
+                                message += "你选择不升级该地块。";
+                            }
+                        }
+                    } else {
+                        message += "这是你的土地，已经满级了。";
+                    }
                 } else {
-                    message += "这是" + tile.getOwner() + "的土地，你需要支付租金 $" + tile.getRent();
+                    // 别人的土地，支付租金
+                    int rent = tile.getRent();
+                    player.setMoney(player.getMoney() - rent);
+
+                    // 找到地主并给他钱
+                    for (Player owner : players) {
+                        if (owner.getName().equals(tile.getOwner())) {
+                            owner.setMoney(owner.getMoney() + rent);
+                            break;
+                        }
+                    }
+
+                    message += "这是" + tile.getOwner() + "的土地，你支付了租金 $" + rent +
+                            "，剩余 $" + player.getMoney();
                 }
                 break;
+
             case LUCKY:
-                message += "幸运事件！获得奖金 $" + (100 + (int)(Math.random() * 200));
+                // 幸运事件
+                int reward = 100 + (int)(Math.random() * 200);
+                player.setMoney(player.getMoney() + reward);
+                if (!player.isAI()) {
+                    player.setExtraTurn(true); // 玩家获得额外回合
+                }
+                message += "幸运事件！你获得了奖金 $" + reward + "，现有资金 $" + player.getMoney();
+                if (!player.isAI()) {
+                    message += "\n你获得了一次额外掷骰机会！";
+                }
                 break;
+
             case UNLUCKY:
-                message += "不幸事件！损失 $" + (50 + (int)(Math.random() * 150));
+                // 不幸事件
+                int penalty = 50 + (int)(Math.random() * 150);
+                player.setMoney(player.getMoney() - penalty);
+                if (Math.random() < 0.3) {
+                    player.setSkipTurn(true); // 30%几率下回合跳过
+                    message += "不幸事件！你损失了 $" + penalty + "，现有资金 $" + player.getMoney() +
+                            "\n更倒霉的是，你下回合将被跳过！";
+                } else {
+                    message += "不幸事件！你损失了 $" + penalty + "，现有资金 $" + player.getMoney();
+                }
                 break;
+
             case PRISON:
+                // 监狱事件
+                player.setSkipTurn(true);
                 message += "你被关进监狱，下一回合将跳过！";
                 break;
+
             case START:
+                // 起点事件
                 message += "你回到了起点！";
                 break;
         }
 
-        JOptionPane.showMessageDialog(this, message);
+        if (showDialog) {
+            JOptionPane.showMessageDialog(this, message);
+        }
+
+        // 检查玩家是否破产
+        if (player.getMoney() < 0) {
+            player.setBankrupt(true);
+            JOptionPane.showMessageDialog(this, player.getName() + " 破产出局了！");
+            // 释放玩家拥有的所有土地
+            for (Tile t : game.getMap()) {
+                if (player.getName().equals(t.getOwner())) {
+                    t.setOwner(null);
+                    t.setLevel(0);
+                }
+            }
+        }
+
+        // 切换到下一个玩家
+        nextPlayerTurn();
+    }
+
+    private void updateMoneyDisplay() {
+        for (int i = 0; i < players.size(); i++) {
+            moneyLabels[i].setText("" + players.get(i).getMoney());
+        }
     }
 
     private void nextPlayerTurn() {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+        do {
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+        } while (players.get(currentPlayerIndex).isBankrupt());
 
         // 检查游戏是否结束
         if (game.isGameOver()) {
             Player winner = game.getWinner();
             JOptionPane.showMessageDialog(this, "游戏结束！胜利者是 " + winner.getName());
+            return;
+        }
+
+        // 处理额外回合或跳过回合
+        Player nextPlayer = getCurrentPlayer();
+        if (nextPlayer.hasExtraTurn()) {
+            nextPlayer.setExtraTurn(false);
+            JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 获得额外回合！");
+        } else if (nextPlayer.isSkipTurn()) {
+            nextPlayer.setSkipTurn(false);
+            JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 跳过本回合！");
+            nextPlayerTurn(); // 直接跳到下下个玩家
             return;
         }
 
@@ -233,6 +373,7 @@ public class GameMapUI extends JFrame {
             moneyLabel.setForeground(Color.WHITE);
             moneyLabel.setBounds(playerAvatarPositions[i][0]+40, playerAvatarPositions[i][1] + 73, 100, 20);
             pane.add(moneyLabel, JLayeredPane.MODAL_LAYER);
+            moneyLabels[i] = moneyLabel;
 
             // 缩放玩家图标（缩小50%）
             ImageIcon originalIcon = loadIcon("/icons/player_" + name + ".png");
