@@ -85,22 +85,8 @@ public class GameMapUI extends JFrame {
     }
 
     private void rollDice() {
-        Player currentPlayer = getCurrentPlayer();
-
-        // 如果玩家应该跳过回合，直接返回
-        if (currentPlayer.isSkipTurn()) {
-            JOptionPane.showMessageDialog(this, currentPlayer.getName() + " 正在监狱中，无法行动！");
-            nextPlayerTurn();
-            return;
-        }
-
-        // 如果玩家有额外回合标志，先清除它
-        if (currentPlayer.hasExtraTurn()) {
-            currentPlayer.setExtraTurn(false);
-        }
-
         int steps = Dice.roll();
-        JOptionPane.showMessageDialog(this, currentPlayer.getName() + " 掷出了 " + steps + "点！");
+        JOptionPane.showMessageDialog(this, getCurrentPlayer().getName() + " 掷出了 " + steps + "点！");
         movePlayer(steps);
     }
 
@@ -196,7 +182,7 @@ public class GameMapUI extends JFrame {
                         } else {
                             // 玩家选择是否升级
                             int choice = JOptionPane.showConfirmDialog(this,
-                                    "这是你的土地，是否花费 $" + upgradeCost + " 升级到等级 " + (tile.getLevel() + 1) + "？",
+                                    "这是你的土地，是否花费 $" + upgradeCost + " 升级到等级 " + (tile.getLevel()+1) + "？",
                                     "升级土地", JOptionPane.YES_NO_OPTION);
 
                             if (choice == JOptionPane.YES_OPTION) {
@@ -236,9 +222,11 @@ public class GameMapUI extends JFrame {
 
             case LUCKY:
                 // 幸运事件
-                int reward = 100 + (int) (Math.random() * 200);
+                int reward = 100 + (int)(Math.random() * 200);
                 player.setMoney(player.getMoney() + reward);
-                player.setExtraTurn(true);
+                if (!player.isAI()) {
+                    player.setExtraTurn(true); // 玩家获得额外回合
+                }
                 message += "幸运事件！你获得了奖金 $" + reward + "，现有资金 $" + player.getMoney();
                 if (!player.isAI()) {
                     message += "\n你获得了一次额外掷骰机会！";
@@ -247,7 +235,7 @@ public class GameMapUI extends JFrame {
 
             case UNLUCKY:
                 // 不幸事件
-                int penalty = 50 + (int) (Math.random() * 150);
+                int penalty = 50 + (int)(Math.random() * 150);
                 player.setMoney(player.getMoney() - penalty);
                 if (Math.random() < 0.3) {
                     player.setSkipTurn(true); // 30%几率下回合跳过
@@ -314,53 +302,26 @@ public class GameMapUI extends JFrame {
     }
 
     private void nextPlayerTurn() {
-        // 正常切换到下一个玩家
         do {
             currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
         } while (players.get(currentPlayerIndex).isBankrupt());
-
-        Player nextPlayer = getCurrentPlayer();
-
-        // 检查新玩家是否应该跳过回合（比如因为上回合进了监狱）
-        // 这里我们不需要特别处理，因为监狱效果应该在进入监狱时就已经设置
-
-        // 处理额外回合或跳过回合
-        if (nextPlayer.hasExtraTurn()) {
-            nextPlayer.setExtraTurn(false);
-            JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 获得额外回合！");
-            // 立即开始当前玩家的回合，不切换玩家
-            if (nextPlayer.isAI()) {
-                startAITurn();
-            }
-            return;
-        }
-        else if (nextPlayer.isSkipTurn()) {
-            nextPlayer.setSkipTurn(false);
-            JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 跳过本回合！");
-
-            // 跳过当前玩家，直接移动到下一个玩家
-            do {
-                currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-            } while (players.get(currentPlayerIndex).isBankrupt());
-
-            // 检查游戏是否结束
-            if (game.isGameOver()) {
-                Player winner = game.getWinner();
-                JOptionPane.showMessageDialog(this, "游戏结束！胜利者是 " + winner.getName());
-                return;
-            }
-
-            // 如果是AI玩家，自动开始回合
-            if (getCurrentPlayer().isAI()) {
-                startAITurn();
-            }
-            return;
-        }
 
         // 检查游戏是否结束
         if (game.isGameOver()) {
             Player winner = game.getWinner();
             JOptionPane.showMessageDialog(this, "游戏结束！胜利者是 " + winner.getName());
+            return;
+        }
+
+        // 处理额外回合或跳过回合
+        Player nextPlayer = getCurrentPlayer();
+        if (nextPlayer.hasExtraTurn()) {
+            nextPlayer.setExtraTurn(false);
+            JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 获得额外回合！");
+        } else if (nextPlayer.isSkipTurn()) {
+            nextPlayer.setSkipTurn(false);
+            JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 跳过本回合！");
+            nextPlayerTurn(); // 直接跳到下下个玩家
             return;
         }
 
@@ -373,7 +334,7 @@ public class GameMapUI extends JFrame {
     private void startAITurn() {
         Timer timer = new Timer(1000, e -> {
             rollDice();
-            ((Timer) e.getSource()).stop();
+            ((Timer)e.getSource()).stop();
         });
         timer.setRepeats(false);
         timer.start();
@@ -434,7 +395,7 @@ public class GameMapUI extends JFrame {
             JLabel moneyLabel = new JLabel("" + money);
             moneyLabel.setFont(new Font("Arial", Font.BOLD, 14));
             moneyLabel.setForeground(Color.WHITE);
-            moneyLabel.setBounds(playerAvatarPositions[i][0] + 40, playerAvatarPositions[i][1] + 73, 100, 20);
+            moneyLabel.setBounds(playerAvatarPositions[i][0]+40, playerAvatarPositions[i][1] + 73, 100, 20);
             pane.add(moneyLabel, JLayeredPane.MODAL_LAYER);
             moneyLabels[i] = moneyLabel;
 
