@@ -3,10 +3,13 @@ package logic;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
-public class Tile {
+public class Tile implements Serializable {
     public enum TileType { START, LAND, LUCKY, UNLUCKY, PRISON}
+    private static final long serialVersionUID = 1L;
 
     private TileType type;       // 地块类型
     /**

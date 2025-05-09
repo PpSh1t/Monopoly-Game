@@ -1,5 +1,6 @@
 package ui;
 
+import data.GameSave;
 import data.MapDAO;
 import logic.Dice;
 import logic.Game;
@@ -26,7 +27,7 @@ public class GameMapUI extends JFrame {
     private JLabel[] playerMarkers;
     private JLabel[] moneyLabels;
     private JLabel[] tileLabels;
-    private JLabel currentPlayerIcon; // 当前回合玩家图标
+    private JLabel currentPlayerIcon;
     private Timer animationTimer;
     private int currentStep = 0;
     private int totalSteps = 0;
@@ -35,8 +36,13 @@ public class GameMapUI extends JFrame {
     private JLabel movingPlayerMarker;
 
     public GameMapUI(List<Player> selectedPlayers) {
-        this.players = selectedPlayers;
-        this.game = new Game(MapDAO.loadMap(), players);
+        this(new Game(MapDAO.loadMap(), selectedPlayers));
+    }
+
+    public GameMapUI(Game game) {
+        this.game = game;
+        this.players = game.getPlayers();
+        this.currentPlayerIndex = game.getCurrentPlayerIndex();
         this.playerMarkers = new JLabel[players.size()];
         this.moneyLabels = new JLabel[players.size()];
         this.tileLabels = new JLabel[12];
@@ -68,8 +74,9 @@ public class GameMapUI extends JFrame {
         // 添加当前回合玩家图标到地图中央（原始大小）
         addCurrentPlayerIcon(layeredPane);
 
-        // 添加骰子按钮
+        // 添加骰子和保存按钮
         addDiceButton();
+        addSaveButton();
 
         setVisible(true);
 
@@ -96,12 +103,24 @@ public class GameMapUI extends JFrame {
         }
     }
 
+    private void addSaveButton() {
+        ImageIcon saveIcon = loadIcon("/icons/save_button.png");
+        JButton saveButton = new JButton(saveIcon);
+        saveButton.setBounds(225, 380, saveIcon.getIconWidth(), saveIcon.getIconHeight());
+        saveButton.setBorderPainted(false);
+        saveButton.setContentAreaFilled(false);
+        saveButton.setFocusPainted(false);
+        saveButton.addActionListener(e -> {
+            GameSave.saveGame(game);
+            JOptionPane.showMessageDialog(this, "游戏已保存！");
+        });
+        layeredPane.add(saveButton, JLayeredPane.MODAL_LAYER);
+    }
+
     private void addCurrentPlayerIcon(JLayeredPane pane) {
-        // 假设地图中央位置是 (120, 120)
         currentPlayerIcon = new JLabel();
-        //TODO：调整位置大小
-        currentPlayerIcon.setBounds(70, 75, 100, 100); // 调整位置以适应您的地图
-        currentPlayerIcon.setVisible(false); // 初始不可见
+        currentPlayerIcon.setBounds(70, 75, 100, 100);
+        currentPlayerIcon.setVisible(false);
         pane.add(currentPlayerIcon, JLayeredPane.PALETTE_LAYER);
     }
 
@@ -113,11 +132,9 @@ public class GameMapUI extends JFrame {
 
         try {
             ImageIcon icon = loadIcon(iconPath);
-            // 使用原始大小
             currentPlayerIcon.setIcon(icon);
             currentPlayerIcon.setVisible(true);
         } catch (Exception e) {
-            // 如果找不到玩家图标，使用默认图标
             currentPlayerIcon.setIcon(null);
             currentPlayerIcon.setVisible(false);
         }
@@ -153,17 +170,13 @@ public class GameMapUI extends JFrame {
         totalSteps = steps;
         currentStep = 0;
 
-        // 保存当前移动的玩家标记
         movingPlayerMarker = playerMarkers[players.indexOf(player)];
-
-        // 开始动画
         animationTimer.start();
     }
 
     private void updatePlayerPositionDuringAnimation() {
         if (movingPlayerMarker == null) return;
 
-        // 计算当前应该处于的位置
         int currentPosition = (fromPosition + currentStep) % 12;
         updateSinglePlayerPosition(movingPlayerMarker, currentPosition);
     }
@@ -171,17 +184,9 @@ public class GameMapUI extends JFrame {
     private void completePlayerMove() {
         Player player = getCurrentPlayer();
         player.setPosition(toPosition);
-
-        // 更新最终位置
         updateSinglePlayerPosition(movingPlayerMarker, toPosition);
-
-        // 处理地块事件
         handleTileEvent(player);
-
-        // 更新金钱显示
         updateMoneyDisplay();
-
-        // 重置移动标记
         movingPlayerMarker = null;
     }
 
@@ -191,10 +196,10 @@ public class GameMapUI extends JFrame {
         if (index < 0 || index >= playerMarkers.length) return;
 
         int[][] positions = {
-                {15, 15}, {85, 15}, {155, 15}, {225, 15}, // 上边
-                {225, 85}, {225, 155},                     // 右边
-                {225, 225}, {155, 225}, {85, 225}, {15, 225}, // 下边
-                {15, 155}, {15, 85}                         // 左边
+                {15, 15}, {85, 15}, {155, 15}, {225, 15},
+                {225, 85}, {225, 155},
+                {225, 225}, {155, 225}, {85, 225}, {15, 225},
+                {15, 155}, {15, 85}
         };
 
         int posX = positions[position][0] + playerStartOffsets[index][0];
@@ -364,11 +369,10 @@ public class GameMapUI extends JFrame {
     }
 
     private void nextPlayerTurn() {
-        // 如果是额外回合，不切换玩家，只更新图标
         if (getCurrentPlayer().hasExtraTurn()) {
             getCurrentPlayer().setExtraTurn(false);
             JOptionPane.showMessageDialog(this, getCurrentPlayer().getName() + " 开始额外回合！");
-            updateCurrentPlayerIcon(); // 确保图标更新
+            updateCurrentPlayerIcon();
 
             if (getCurrentPlayer().isAI()) {
                 startAITurn();
@@ -376,7 +380,6 @@ public class GameMapUI extends JFrame {
             return;
         }
 
-        // 切换当前玩家图标前先隐藏
         if (currentPlayerIcon != null) {
             currentPlayerIcon.setVisible(false);
         }
@@ -399,7 +402,6 @@ public class GameMapUI extends JFrame {
             return;
         }
 
-        // 更新当前玩家图标
         updateCurrentPlayerIcon();
 
         if (getCurrentPlayer().isAI()) {
@@ -473,7 +475,6 @@ public class GameMapUI extends JFrame {
             pane.add(moneyLabel, JLayeredPane.MODAL_LAYER);
             moneyLabels[i] = moneyLabel;
 
-            // 地块上的玩家图标保持50%大小
             ImageIcon originalIcon = loadIcon("/icons/player_" + name + ".png");
             Image scaledImage = originalIcon.getImage().getScaledInstance(
                     originalIcon.getIconWidth() / 2, originalIcon.getIconHeight() / 2, Image.SCALE_SMOOTH);

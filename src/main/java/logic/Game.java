@@ -4,24 +4,24 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.swing.*;
+import java.io.Serializable;
 import java.util.List;
 
 @Getter
 @Setter
-public class Game {
+public class Game implements Serializable{
+
+    private static final long serialVersionUID = 1L;
     @Getter
     private List<Tile> map;
     @Getter
     private List<Player> players;
+    private int currentPlayerIndex = 0;
 
     public Game(List<Tile> map, List<Player> players) {
         this.map = map;
         this.players = players;
     }
-
-
-    // Game.java
-    private int currentPlayerIndex = 0;
 
     public void nextTurn() {
         Player player = players.get(currentPlayerIndex);

@@ -1,5 +1,8 @@
 package ui;
 
+import data.GameSave;
+import logic.Game;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -35,7 +38,6 @@ public class MenuUI extends JFrame {
         // 添加事件监听（你可以在这里连接你的控制器逻辑）
         newGameButton.addActionListener(e -> {
             System.out.println("点击了新游戏");
-            // TODO: 进入选人界面
             this.dispose();
             SwingUtilities.invokeLater(PlayerSelectUI::new);
         });
@@ -43,7 +45,18 @@ public class MenuUI extends JFrame {
         continueGameButton.addActionListener(e -> {
             System.out.println("点击了继续游戏");
             // TODO: 加载保存的游戏进度
+            Game loadedGame = GameSave.loadGame();
+            if (loadedGame != null) {
+                this.dispose();
+                SwingUtilities.invokeLater(() -> new GameMapUI(loadedGame));
+            }
         });
+
+        // 如果存档不存在，禁用继续游戏按钮
+        if (!GameSave.saveExists()) {
+            continueGameButton.setEnabled(false);
+        }
+
 
         // 添加按钮
         add(newGameButton);
