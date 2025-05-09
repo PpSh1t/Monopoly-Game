@@ -23,12 +23,14 @@ public class GameMapUI extends JFrame {
     private JLayeredPane layeredPane;
     private JLabel[] playerMarkers;
     private JLabel[] moneyLabels;
+    private JLabel[] tileLabels; // 新增：保存地块标签引用
 
     public GameMapUI(List<Player> selectedPlayers) {
         this.players = selectedPlayers;
         this.game = new Game(MapDAO.loadMap(), players);
         this.playerMarkers = new JLabel[players.size()];
         this.moneyLabels = new JLabel[players.size()];
+        this.tileLabels = new JLabel[12]; // 12个地块
 
         setTitle("游戏地图");
         backgroundImage = loadImage("/icons/game.png");
@@ -141,6 +143,7 @@ public class GameMapUI extends JFrame {
         Tile tile = game.getMap().get(player.getPosition());
         String message = player.getName() + " 停在了 " + tile.getType() + " 地块上。\n";
         boolean showDialog = true;
+        boolean tileChanged = false; // 标记地块是否发生变化
 
         switch (tile.getType()) {
             case LAND:
@@ -152,6 +155,7 @@ public class GameMapUI extends JFrame {
                             tile.setOwner(player.getName());
                             player.setMoney(player.getMoney() - tile.getPrice());
                             message += "AI决定购买该地块，花费 $" + tile.getPrice() + "，剩余 $" + player.getMoney();
+                            tileChanged = true;
                         } else {
                             message += "AI决定不购买该地块。";
                         }
@@ -166,6 +170,7 @@ public class GameMapUI extends JFrame {
                                 tile.setOwner(player.getName());
                                 player.setMoney(player.getMoney() - tile.getPrice());
                                 message += "你购买了该地块，花费 $" + tile.getPrice() + "，剩余 $" + player.getMoney();
+                                tileChanged = true;
                             } else {
                                 message += "你的资金不足，无法购买该地块！";
                             }
@@ -184,6 +189,7 @@ public class GameMapUI extends JFrame {
                                 player.setMoney(player.getMoney() - upgradeCost);
                                 message += "AI决定升级该地块到等级 " + tile.getLevel() +
                                         "，花费 $" + upgradeCost + "，剩余 $" + player.getMoney();
+                                tileChanged = true;
                             } else {
                                 message += "AI决定不升级该地块。";
                             }
@@ -199,6 +205,7 @@ public class GameMapUI extends JFrame {
                                     player.setMoney(player.getMoney() - upgradeCost);
                                     message += "你升级了该地块到等级 " + tile.getLevel() +
                                             "，花费 $" + upgradeCost + "，剩余 $" + player.getMoney();
+                                    tileChanged = true;
                                 } else {
                                     message += "你的资金不足，无法升级该地块！";
                                 }
@@ -267,6 +274,11 @@ public class GameMapUI extends JFrame {
             JOptionPane.showMessageDialog(this, message);
         }
 
+        // 如果地块发生变化，更新图标
+        if (tileChanged) {
+            updateTileIcon(player.getPosition());
+        }
+
         // 检查玩家是否破产
         if (player.getMoney() < 0) {
             player.setBankrupt(true);
@@ -276,12 +288,23 @@ public class GameMapUI extends JFrame {
                 if (player.getName().equals(t.getOwner())) {
                     t.setOwner(null);
                     t.setLevel(0);
+                    updateTileIcon(game.getMap().indexOf(t));
                 }
             }
         }
 
         // 切换到下一个玩家
         nextPlayerTurn();
+    }
+
+    // 新增方法：更新指定位置的地块图标
+    private void updateTileIcon(int position) {
+        Tile tile = game.getMap().get(position);
+        String iconPath = getIconPathForTile(tile);
+        if (iconPath == null) return;
+
+        ImageIcon newIcon = loadIcon(iconPath);
+        tileLabels[position].setIcon(newIcon);
     }
 
     private void updateMoneyDisplay() {
@@ -347,7 +370,6 @@ public class GameMapUI extends JFrame {
         }
     }
 
-
     private void startAITurn() {
         Timer timer = new Timer(1000, e -> {
             rollDice();
@@ -377,7 +399,7 @@ public class GameMapUI extends JFrame {
 
         for (int i = 0; i < map.size(); i++) {
             Tile tile = map.get(i);
-            String iconPath = getIconPathForTile(tile.getType());
+            String iconPath = getIconPathForTile(tile);
             if (iconPath == null) continue;
 
             ImageIcon icon = loadIcon(iconPath);
@@ -386,6 +408,7 @@ public class GameMapUI extends JFrame {
                     icon.getIconWidth(), icon.getIconHeight());
 
             pane.add(label, JLayeredPane.DEFAULT_LAYER); // 地块在默认层
+            tileLabels[i] = label; // 保存地块标签引用
         }
     }
 
@@ -434,15 +457,27 @@ public class GameMapUI extends JFrame {
         }
     }
 
-    private String getIconPathForTile(TileType type) {
-        return switch (type) {
-            case START -> "/icons/start_icon.png";
-            case UNLUCKY -> "/icons/unlucky_icon.png";
-            case LUCKY -> "/icons/lucky_icon.png";
-            case PRISON -> "/icons/prison_icon.png";
-            case LAND -> "/icons/land_icon.png";
-            default -> null;
-        };
+    // 修改后的方法：根据地块类型、所有者和等级返回对应的图标路径
+    private String getIconPathForTile(Tile tile) {
+        if (tile.getType() != TileType.LAND) {
+            return switch (tile.getType()) {
+                case START -> "/icons/start_icon.png";
+                case UNLUCKY -> "/icons/unlucky_icon.png";
+                case LUCKY -> "/icons/lucky_icon.png";
+                case PRISON -> "/icons/prison_icon.png";
+                default -> null;
+            };
+        }
+
+        // 如果是LAND类型，根据所有者和等级返回对应的图标
+        if (tile.getOwner() == null) {
+            return "/icons/land_icon.png"; // 默认未购买的地块图标
+        }
+
+        // 根据所有者名称和等级返回对应的图标
+        String ownerName = tile.getOwner().toLowerCase();
+        int level = tile.getLevel();
+        return "/icons/" + ownerName + "_land" + level + "_icon.png";
     }
 
     private Image loadImage(String path) {
