@@ -92,7 +92,7 @@ public class GameMapUI extends JFrame {
     private void addDiceButton() {
         ImageIcon diceIcon = loadIcon("/icons/dice.png");
         JButton diceButton = new JButton(diceIcon);
-        diceButton.setBounds(145, 145, diceIcon.getIconWidth(), diceIcon.getIconHeight());
+        diceButton.setBounds(120, 120, diceIcon.getIconWidth(), diceIcon.getIconHeight());
         diceButton.setBorderPainted(false);
         diceButton.setContentAreaFilled(false);
         diceButton.setFocusPainted(false);
