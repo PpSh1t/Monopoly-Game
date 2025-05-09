@@ -302,6 +302,20 @@ public class GameMapUI extends JFrame {
     }
 
     private void nextPlayerTurn() {
+        // 检查当前玩家是否有额外回合
+        if (getCurrentPlayer().hasExtraTurn()) {
+            // 清除额外回合标志并提示
+            getCurrentPlayer().setExtraTurn(false);
+            JOptionPane.showMessageDialog(this, getCurrentPlayer().getName() + " 开始额外回合！");
+
+            // 如果是AI，立即开始回合
+            if (getCurrentPlayer().isAI()) {
+                startAITurn();
+            }
+            return;
+        }
+
+        // 正常推进到下一个玩家
         do {
             currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
         } while (players.get(currentPlayerIndex).isBankrupt());
@@ -313,12 +327,9 @@ public class GameMapUI extends JFrame {
             return;
         }
 
-        // 处理额外回合或跳过回合
+        // 处理跳过回合
         Player nextPlayer = getCurrentPlayer();
-        if (nextPlayer.hasExtraTurn()) {
-            nextPlayer.setExtraTurn(false);
-            JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 获得额外回合！");
-        } else if (nextPlayer.isSkipTurn()) {
+        if (nextPlayer.isSkipTurn()) {
             nextPlayer.setSkipTurn(false);
             JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 跳过本回合！");
             nextPlayerTurn(); // 直接跳到下下个玩家
@@ -330,7 +341,6 @@ public class GameMapUI extends JFrame {
             startAITurn();
         }
     }
-
     private void startAITurn() {
         Timer timer = new Timer(1000, e -> {
             rollDice();
