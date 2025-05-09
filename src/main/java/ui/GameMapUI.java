@@ -26,6 +26,7 @@ public class GameMapUI extends JFrame {
     private JLabel[] playerMarkers;
     private JLabel[] moneyLabels;
     private JLabel[] tileLabels;
+    private JLabel currentPlayerIcon; // 当前回合玩家图标
     private Timer animationTimer;
     private int currentStep = 0;
     private int totalSteps = 0;
@@ -64,6 +65,9 @@ public class GameMapUI extends JFrame {
         // 添加玩家头像到底部和地图起点
         renderPlayers(layeredPane);
 
+        // 添加当前回合玩家图标到地图中央（原始大小）
+        addCurrentPlayerIcon(layeredPane);
+
         // 添加骰子按钮
         addDiceButton();
 
@@ -83,9 +87,39 @@ public class GameMapUI extends JFrame {
             }
         });
 
+        // 初始显示当前玩家图标
+        updateCurrentPlayerIcon();
+
         // 如果是AI玩家，自动开始回合
         if (getCurrentPlayer().isAI()) {
             startAITurn();
+        }
+    }
+
+    private void addCurrentPlayerIcon(JLayeredPane pane) {
+        // 假设地图中央位置是 (120, 120)
+        currentPlayerIcon = new JLabel();
+        //TODO：调整位置大小
+        currentPlayerIcon.setBounds(70, 75, 100, 100); // 调整位置以适应您的地图
+        currentPlayerIcon.setVisible(false); // 初始不可见
+        pane.add(currentPlayerIcon, JLayeredPane.PALETTE_LAYER);
+    }
+
+    private void updateCurrentPlayerIcon() {
+        if (currentPlayerIcon == null) return;
+
+        Player currentPlayer = getCurrentPlayer();
+        String iconPath = "/icons/player_" + currentPlayer.getName() + ".png";
+
+        try {
+            ImageIcon icon = loadIcon(iconPath);
+            // 使用原始大小
+            currentPlayerIcon.setIcon(icon);
+            currentPlayerIcon.setVisible(true);
+        } catch (Exception e) {
+            // 如果找不到玩家图标，使用默认图标
+            currentPlayerIcon.setIcon(null);
+            currentPlayerIcon.setVisible(false);
         }
     }
 
@@ -330,14 +364,21 @@ public class GameMapUI extends JFrame {
     }
 
     private void nextPlayerTurn() {
+        // 如果是额外回合，不切换玩家，只更新图标
         if (getCurrentPlayer().hasExtraTurn()) {
             getCurrentPlayer().setExtraTurn(false);
             JOptionPane.showMessageDialog(this, getCurrentPlayer().getName() + " 开始额外回合！");
+            updateCurrentPlayerIcon(); // 确保图标更新
 
             if (getCurrentPlayer().isAI()) {
                 startAITurn();
             }
             return;
+        }
+
+        // 切换当前玩家图标前先隐藏
+        if (currentPlayerIcon != null) {
+            currentPlayerIcon.setVisible(false);
         }
 
         do {
@@ -357,6 +398,9 @@ public class GameMapUI extends JFrame {
             nextPlayerTurn();
             return;
         }
+
+        // 更新当前玩家图标
+        updateCurrentPlayerIcon();
 
         if (getCurrentPlayer().isAI()) {
             startAITurn();
@@ -429,6 +473,7 @@ public class GameMapUI extends JFrame {
             pane.add(moneyLabel, JLayeredPane.MODAL_LAYER);
             moneyLabels[i] = moneyLabel;
 
+            // 地块上的玩家图标保持50%大小
             ImageIcon originalIcon = loadIcon("/icons/player_" + name + ".png");
             Image scaledImage = originalIcon.getImage().getScaledInstance(
                     originalIcon.getIconWidth() / 2, originalIcon.getIconHeight() / 2, Image.SCALE_SMOOTH);
