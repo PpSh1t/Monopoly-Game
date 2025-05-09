@@ -9,6 +9,8 @@ import logic.Tile.TileType;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.net.URL;
 import java.util.List;
 
@@ -23,14 +25,20 @@ public class GameMapUI extends JFrame {
     private JLayeredPane layeredPane;
     private JLabel[] playerMarkers;
     private JLabel[] moneyLabels;
-    private JLabel[] tileLabels; // 新增：保存地块标签引用
+    private JLabel[] tileLabels;
+    private Timer animationTimer;
+    private int currentStep = 0;
+    private int totalSteps = 0;
+    private int fromPosition = 0;
+    private int toPosition = 0;
+    private JLabel movingPlayerMarker;
 
     public GameMapUI(List<Player> selectedPlayers) {
         this.players = selectedPlayers;
         this.game = new Game(MapDAO.loadMap(), players);
         this.playerMarkers = new JLabel[players.size()];
         this.moneyLabels = new JLabel[players.size()];
-        this.tileLabels = new JLabel[12]; // 12个地块
+        this.tileLabels = new JLabel[12];
 
         setTitle("游戏地图");
         backgroundImage = loadImage("/icons/game.png");
@@ -61,6 +69,20 @@ public class GameMapUI extends JFrame {
 
         setVisible(true);
 
+        // 初始化动画定时器
+        animationTimer = new Timer(50, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (currentStep < totalSteps) {
+                    currentStep++;
+                    updatePlayerPositionDuringAnimation();
+                } else {
+                    animationTimer.stop();
+                    completePlayerMove();
+                }
+            }
+        });
+
         // 如果是AI玩家，自动开始回合
         if (getCurrentPlayer().isAI()) {
             startAITurn();
@@ -87,27 +109,50 @@ public class GameMapUI extends JFrame {
     private void rollDice() {
         int steps = Dice.roll();
         JOptionPane.showMessageDialog(this, getCurrentPlayer().getName() + " 掷出了 " + steps + "点！");
-        movePlayer(steps);
+        startPlayerMovement(steps);
     }
 
-    private void movePlayer(int steps) {
+    private void startPlayerMovement(int steps) {
         Player player = getCurrentPlayer();
-        int newPosition = (player.getPosition() + steps) % 12; // 12个地块
+        fromPosition = player.getPosition();
+        toPosition = (fromPosition + steps) % 12;
+        totalSteps = steps;
+        currentStep = 0;
 
-        // 更新玩家位置
-        player.setPosition(newPosition);
+        // 保存当前移动的玩家标记
+        movingPlayerMarker = playerMarkers[players.indexOf(player)];
 
-        // 更新玩家在地图上的显示
-        updatePlayerMarker(player);
+        // 开始动画
+        animationTimer.start();
+    }
+
+    private void updatePlayerPositionDuringAnimation() {
+        if (movingPlayerMarker == null) return;
+
+        // 计算当前应该处于的位置
+        int currentPosition = (fromPosition + currentStep) % 12;
+        updateSinglePlayerPosition(movingPlayerMarker, currentPosition);
+    }
+
+    private void completePlayerMove() {
+        Player player = getCurrentPlayer();
+        player.setPosition(toPosition);
+
+        // 更新最终位置
+        updateSinglePlayerPosition(movingPlayerMarker, toPosition);
 
         // 处理地块事件
         handleTileEvent(player);
 
         // 更新金钱显示
         updateMoneyDisplay();
+
+        // 重置移动标记
+        movingPlayerMarker = null;
     }
 
-    private void updatePlayerMarker(Player player) {
+    private void updateSinglePlayerPosition(JLabel playerMarker, int position) {
+        Player player = getCurrentPlayer();
         int index = players.indexOf(player);
         if (index < 0 || index >= playerMarkers.length) return;
 
@@ -118,25 +163,23 @@ public class GameMapUI extends JFrame {
                 {15, 155}, {15, 85}                         // 左边
         };
 
-        int posX = positions[player.getPosition()][0] + playerStartOffsets[index][0];
-        int posY = positions[player.getPosition()][1] + playerStartOffsets[index][1];
+        int posX = positions[position][0] + playerStartOffsets[index][0];
+        int posY = positions[position][1] + playerStartOffsets[index][1];
 
-        playerMarkers[index].setBounds(posX, posY,
-                playerMarkers[index].getWidth(), playerMarkers[index].getHeight());
+        playerMarker.setBounds(posX, posY,
+                playerMarker.getWidth(), playerMarker.getHeight());
     }
 
     private void handleTileEvent(Player player) {
         Tile tile = game.getMap().get(player.getPosition());
         String message = player.getName() + " 停在了 " + tile.getType() + " 地块上。\n";
         boolean showDialog = true;
-        boolean tileChanged = false; // 标记地块是否发生变化
+        boolean tileChanged = false;
 
         switch (tile.getType()) {
             case LAND:
                 if (tile.getOwner() == null) {
-                    // 空地，询问是否购买
                     if (player.isAI()) {
-                        // AI自动决定是否购买
                         if (player.getMoney() >= tile.getPrice() && Math.random() < 0.6) {
                             tile.setOwner(player.getName());
                             player.setMoney(player.getMoney() - tile.getPrice());
@@ -146,7 +189,6 @@ public class GameMapUI extends JFrame {
                             message += "AI决定不购买该地块。";
                         }
                     } else {
-                        // 玩家选择是否购买
                         int choice = JOptionPane.showConfirmDialog(this,
                                 "这是一块空地，是否以 $" + tile.getPrice() + " 购买？",
                                 "购买土地", JOptionPane.YES_NO_OPTION);
@@ -165,11 +207,9 @@ public class GameMapUI extends JFrame {
                         }
                     }
                 } else if (tile.getOwner().equals(player.getName())) {
-                    // 自己的土地，询问是否升级
                     if (tile.canUpgrade()) {
                         int upgradeCost = tile.getUpgradeCost();
                         if (player.isAI()) {
-                            // AI自动决定是否升级
                             if (player.getMoney() >= upgradeCost && Math.random() < 0.7) {
                                 tile.upgrade();
                                 player.setMoney(player.getMoney() - upgradeCost);
@@ -180,7 +220,6 @@ public class GameMapUI extends JFrame {
                                 message += "AI决定不升级该地块。";
                             }
                         } else {
-                            // 玩家选择是否升级
                             int choice = JOptionPane.showConfirmDialog(this,
                                     "这是你的土地，是否花费 $" + upgradeCost + " 升级到等级 " + (tile.getLevel()+1) + "？",
                                     "升级土地", JOptionPane.YES_NO_OPTION);
@@ -203,11 +242,9 @@ public class GameMapUI extends JFrame {
                         message += "这是你的土地，已经满级了。";
                     }
                 } else {
-                    // 别人的土地，支付租金
                     int rent = tile.getRent();
                     player.setMoney(player.getMoney() - rent);
 
-                    // 找到地主并给他钱
                     for (Player owner : players) {
                         if (owner.getName().equals(tile.getOwner())) {
                             owner.setMoney(owner.getMoney() + rent);
@@ -221,11 +258,10 @@ public class GameMapUI extends JFrame {
                 break;
 
             case LUCKY:
-                // 幸运事件
                 int reward = 100 + (int)(Math.random() * 200);
                 player.setMoney(player.getMoney() + reward);
                 if (!player.isAI()) {
-                    player.setExtraTurn(true); // 玩家获得额外回合
+                    player.setExtraTurn(true);
                 }
                 message += "幸运事件！你获得了奖金 $" + reward + "，现有资金 $" + player.getMoney();
                 if (!player.isAI()) {
@@ -234,11 +270,10 @@ public class GameMapUI extends JFrame {
                 break;
 
             case UNLUCKY:
-                // 不幸事件
                 int penalty = 50 + (int)(Math.random() * 150);
                 player.setMoney(player.getMoney() - penalty);
                 if (Math.random() < 0.3) {
-                    player.setSkipTurn(true); // 30%几率下回合跳过
+                    player.setSkipTurn(true);
                     message += "不幸事件！你损失了 $" + penalty + "，现有资金 $" + player.getMoney() +
                             "\n更倒霉的是，你下回合将被跳过！";
                 } else {
@@ -247,13 +282,11 @@ public class GameMapUI extends JFrame {
                 break;
 
             case PRISON:
-                // 监狱事件
                 player.setSkipTurn(true);
                 message += "你被关进监狱，下一回合将跳过！";
                 break;
 
             case START:
-                // 起点事件
                 message += "你回到了起点！";
                 break;
         }
@@ -262,16 +295,13 @@ public class GameMapUI extends JFrame {
             JOptionPane.showMessageDialog(this, message);
         }
 
-        // 如果地块发生变化，更新图标
         if (tileChanged) {
             updateTileIcon(player.getPosition());
         }
 
-        // 检查玩家是否破产
         if (player.getMoney() < 0) {
             player.setBankrupt(true);
             JOptionPane.showMessageDialog(this, player.getName() + " 破产出局了！");
-            // 释放玩家拥有的所有土地
             for (Tile t : game.getMap()) {
                 if (player.getName().equals(t.getOwner())) {
                     t.setOwner(null);
@@ -281,11 +311,9 @@ public class GameMapUI extends JFrame {
             }
         }
 
-        // 切换到下一个玩家
         nextPlayerTurn();
     }
 
-    // 新增方法：更新指定位置的地块图标
     private void updateTileIcon(int position) {
         Tile tile = game.getMap().get(position);
         String iconPath = getIconPathForTile(tile);
@@ -302,45 +330,39 @@ public class GameMapUI extends JFrame {
     }
 
     private void nextPlayerTurn() {
-        // 检查当前玩家是否有额外回合
         if (getCurrentPlayer().hasExtraTurn()) {
-            // 清除额外回合标志并提示
             getCurrentPlayer().setExtraTurn(false);
             JOptionPane.showMessageDialog(this, getCurrentPlayer().getName() + " 开始额外回合！");
 
-            // 如果是AI，立即开始回合
             if (getCurrentPlayer().isAI()) {
                 startAITurn();
             }
             return;
         }
 
-        // 正常推进到下一个玩家
         do {
             currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
         } while (players.get(currentPlayerIndex).isBankrupt());
 
-        // 检查游戏是否结束
         if (game.isGameOver()) {
             Player winner = game.getWinner();
             JOptionPane.showMessageDialog(this, "游戏结束！胜利者是 " + winner.getName());
             return;
         }
 
-        // 处理跳过回合
         Player nextPlayer = getCurrentPlayer();
         if (nextPlayer.isSkipTurn()) {
             nextPlayer.setSkipTurn(false);
             JOptionPane.showMessageDialog(this, nextPlayer.getName() + " 跳过本回合！");
-            nextPlayerTurn(); // 直接跳到下下个玩家
+            nextPlayerTurn();
             return;
         }
 
-        // 如果是AI玩家，自动开始回合
         if (getCurrentPlayer().isAI()) {
             startAITurn();
         }
     }
+
     private void startAITurn() {
         Timer timer = new Timer(1000, e -> {
             rollDice();
@@ -362,10 +384,10 @@ public class GameMapUI extends JFrame {
         }
 
         int[][] positions = {
-                {15, 15}, {85, 15}, {155, 15}, {225, 15}, // 上边
-                {225, 85}, {225, 155},                     // 右边
-                {225, 225}, {155, 225}, {85, 225}, {15, 225}, // 下边
-                {15, 155}, {15, 85}                         // 左边
+                {15, 15}, {85, 15}, {155, 15}, {225, 15},
+                {225, 85}, {225, 155},
+                {225, 225}, {155, 225}, {85, 225}, {15, 225},
+                {15, 155}, {15, 85}
         };
 
         for (int i = 0; i < map.size(); i++) {
@@ -378,8 +400,8 @@ public class GameMapUI extends JFrame {
             label.setBounds(positions[i][0], positions[i][1],
                     icon.getIconWidth(), icon.getIconHeight());
 
-            pane.add(label, JLayeredPane.DEFAULT_LAYER); // 地块在默认层
-            tileLabels[i] = label; // 保存地块标签引用
+            pane.add(label, JLayeredPane.DEFAULT_LAYER);
+            tileLabels[i] = label;
         }
     }
 
@@ -395,13 +417,11 @@ public class GameMapUI extends JFrame {
             String name = player.getName();
             int money = player.getMoney();
 
-            // 加载头像（原图大小）
             JLabel avatarLabel = new JLabel(loadIcon("/icons/player_" + name + ".png"));
             avatarLabel.setBounds(playerAvatarPositions[i][0], playerAvatarPositions[i][1],
                     avatarLabel.getIcon().getIconWidth(), avatarLabel.getIcon().getIconHeight());
             pane.add(avatarLabel, JLayeredPane.MODAL_LAYER);
 
-            // 显示余额
             JLabel moneyLabel = new JLabel("" + money);
             moneyLabel.setFont(new Font("Arial", Font.BOLD, 14));
             moneyLabel.setForeground(Color.WHITE);
@@ -409,26 +429,22 @@ public class GameMapUI extends JFrame {
             pane.add(moneyLabel, JLayeredPane.MODAL_LAYER);
             moneyLabels[i] = moneyLabel;
 
-            // 缩放玩家图标（缩小50%）
             ImageIcon originalIcon = loadIcon("/icons/player_" + name + ".png");
             Image scaledImage = originalIcon.getImage().getScaledInstance(
                     originalIcon.getIconWidth() / 2, originalIcon.getIconHeight() / 2, Image.SCALE_SMOOTH);
             ImageIcon scaledIcon = new ImageIcon(scaledImage);
 
-            // 放置到地图起始位置
             JLabel playerOnMap = new JLabel(scaledIcon);
             int offsetX = playerStartOffsets[i][0];
             int offsetY = playerStartOffsets[i][1];
             playerOnMap.setBounds(startX + offsetX, startY + offsetY,
                     scaledIcon.getIconWidth(), scaledIcon.getIconHeight());
-            pane.add(playerOnMap, JLayeredPane.PALETTE_LAYER); // 玩家浮层
+            pane.add(playerOnMap, JLayeredPane.PALETTE_LAYER);
 
-            // 保存玩家标记引用
             playerMarkers[i] = playerOnMap;
         }
     }
 
-    // 修改后的方法：根据地块类型、所有者和等级返回对应的图标路径
     private String getIconPathForTile(Tile tile) {
         if (tile.getType() != TileType.LAND) {
             return switch (tile.getType()) {
@@ -440,12 +456,10 @@ public class GameMapUI extends JFrame {
             };
         }
 
-        // 如果是LAND类型，根据所有者和等级返回对应的图标
         if (tile.getOwner() == null) {
-            return "/icons/land_icon.png"; // 默认未购买的地块图标
+            return "/icons/land_icon.png";
         }
 
-        // 根据所有者名称和等级返回对应的图标
         String ownerName = tile.getOwner().toLowerCase();
         int level = tile.getLevel();
         return "/icons/" + ownerName + "_land" + level + "_icon.png";
@@ -464,7 +478,6 @@ public class GameMapUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        // 示例玩家列表测试
         List<Player> players = List.of(
                 new Player("issac", false),
                 new Player("lost", false),
