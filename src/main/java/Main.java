@@ -1,5 +1,9 @@
+import ui.MenuUI;
+
+import javax.swing.*;
+
 public class Main {
     public static void main(String[] args) {
-
+        SwingUtilities.invokeLater(MenuUI::new);
     }
 }

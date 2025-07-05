@@ -15,6 +15,9 @@ import java.awt.event.ActionListener;
 import java.net.URL;
 import java.util.List;
 
+/**
+ * 主地图界面，渲染棋盘、头像、骰子
+ */
 public class GameMapUI extends JFrame {
     private Image backgroundImage;
     private List<Player> players;

@@ -6,6 +6,9 @@ import lombok.ToString;
 
 import java.io.Serializable;
 
+/**
+ * 玩家类，含金钱、位置等状态
+ */
 @Getter
 @Setter
 @ToString

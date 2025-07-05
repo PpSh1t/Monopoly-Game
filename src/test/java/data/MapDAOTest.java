@@ -18,5 +18,4 @@ public class MapDAOTest {
         // 输出地图中每个地块的信息
         map.forEach(tile -> System.out.println(tile));
     }
-
 }

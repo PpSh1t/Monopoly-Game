@@ -4,13 +4,16 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.swing.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
+
 
 @Getter
 @Setter
 public class Game implements Serializable{
 
+    @Serial
     private static final long serialVersionUID = 1L;
     @Getter
     private List<Tile> map;
@@ -33,10 +36,7 @@ public class Game implements Serializable{
         // 判断游戏是否结束
         long alive = players.stream().filter(p -> !p.isBankrupt()).count();
         if (alive <= 1) {
-            Player winner = players.stream().filter(p -> !p.isBankrupt()).findFirst().orElse(null);
-            if (winner != null) {
-                JOptionPane.showMessageDialog(null, "游戏结束，胜者是 " + winner.getName());
-            }
+            players.stream().filter(p -> !p.isBankrupt()).findFirst().ifPresent(winner -> JOptionPane.showMessageDialog(null, "游戏结束，胜者是 " + winner.getName()));
             return;
         }
 
@@ -71,6 +71,7 @@ public class Game implements Serializable{
 
                 takeTurn(player);  // 进行正常回合
 
+                //判断破产
                 if (player.getMoney() < 0) {
                     player.setBankrupt(true);
                     System.out.println(player.getName() + " 破产出局！");

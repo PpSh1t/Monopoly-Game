@@ -29,7 +29,7 @@ public class Tile implements Serializable {
      *
      */
     @Setter
-    private int price;           // 地块价格（用于手动设置）
+    private int price;           // 地块价格
 
     public Tile(TileType type) {
         this.type = type;
@@ -58,11 +58,11 @@ public class Tile implements Serializable {
     }
 
     /**
-     * 设置地块的租金（如果你想要手动控制）
+     * 设置地块的租金（手动控制）
      * @param rent 租金
      */
     public void setRent(int rent) {
-        // 这个方法可以控制租金，但通常我们是依赖 level 来计算租金
+        // 用于控制租金，但目前依赖 level 来计算租金
     }
 
     /**

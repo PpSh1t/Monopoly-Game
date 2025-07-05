@@ -11,6 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 选择玩家界面
+ */
 public class PlayerSelectUI extends JFrame {
     private Image backgroundImage;
     private JButton playerTypeButton;

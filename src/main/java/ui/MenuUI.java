@@ -6,6 +6,9 @@ import logic.Game;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * 主菜单界面，进入游戏
+ */
 public class MenuUI extends JFrame {
 
     public MenuUI() {
